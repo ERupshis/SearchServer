@@ -42,28 +42,19 @@ void SearchServer::RemoveDocument(int document_id) {
 }
 
 void SearchServer::RemoveDocument(const execution::sequenced_policy&, int document_id) { // S8 NEW
-    if (document_words_freqs_.count(document_id) == 0) {
-        return;
+    if (document_ids_.count(document_id) == 1) {
+        for (auto [word, freq] : GetWordFrequencies(document_id)) {
+            word_to_document_freqs_[word].erase(document_id);
+            if (word_to_document_freqs_.count(word) == 1 && word_to_document_freqs_.at(word).size() == 0) {
+                string s_word{ word };
+                words_in_docs_.erase(s_word);
+            }
+        }
+        document_ids_.erase(document_id);
+        documents_.erase(document_id);
+        document_words_freqs_.erase(document_id);
     }
-
-    document_ids_.erase(document_id);
-    documents_.erase(document_id);
-    document_words_freqs_.erase(document_id);
-
-    const auto& word_freqs = document_words_freqs_.at(document_id);
-    vector<string_view> words(word_freqs.size());
-    transform(
-        execution::seq,
-        word_freqs.begin(), word_freqs.end(),
-        words.begin(),
-        [](const auto& item) { return item.first; }
-    );
-    for_each(
-        execution::seq,
-        words.begin(), words.end(),
-        [this, document_id](string_view word) {
-            word_to_document_freqs_.at(word).erase(document_id);
-        });
+    return;
 }
 void SearchServer::RemoveDocument(const execution::parallel_policy&, int document_id) { // S8 NEW
     if (document_words_freqs_.count(document_id) == 0) {
@@ -93,21 +84,8 @@ void SearchServer::RemoveDocument(const execution::parallel_policy&, int documen
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentStatus status) const {
     return FindTopDocuments(std::execution::seq, raw_query, [status](int document_id, DocumentStatus statusp, int rating) { return statusp == status; });
 }
-vector<Document> SearchServer::FindTopDocuments(const std::execution::sequenced_policy&, string_view raw_query, DocumentStatus status) const {
-    return FindTopDocuments(std::execution::seq, raw_query, [status](int document_id, DocumentStatus statusp, int rating) { return statusp == status; });
-}
-vector<Document> SearchServer::FindTopDocuments(const std::execution::parallel_policy&, string_view raw_query, DocumentStatus status) const {
-    return FindTopDocuments(std::execution::par, raw_query, [status](int document_id, DocumentStatus statusp, int rating) { return statusp == status; });
-}
-
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query) const {
     return FindTopDocuments(std::execution::seq, raw_query, DocumentStatus::ACTUAL);
-}
-vector<Document> SearchServer::FindTopDocuments(const std::execution::sequenced_policy&, string_view raw_query) const {
-    return FindTopDocuments(std::execution::seq, raw_query, DocumentStatus::ACTUAL);
-}
-vector<Document> SearchServer::FindTopDocuments(const std::execution::parallel_policy&, string_view raw_query) const {
-    return FindTopDocuments(std::execution::par, raw_query, DocumentStatus::ACTUAL);
 }
 
 
@@ -142,9 +120,9 @@ SearchServer::MatchDocumentResult SearchServer::MatchDocument(const execution::s
 
     const auto word_checker =
         [this, document_id](string_view word) {
-        const auto it = word_to_document_freqs_.find(word);
-        return it != word_to_document_freqs_.end() && it->second.count(document_id);
-    };
+            const auto it = word_to_document_freqs_.find(word);
+            return it != word_to_document_freqs_.end() && it->second.count(document_id);
+        };
 
 
     if (any_of(execution::seq,
@@ -175,9 +153,9 @@ SearchServer::MatchDocumentResult SearchServer::MatchDocument(const execution::p
 
     const auto word_checker =
         [this, document_id](string_view word) {
-        const auto it = word_to_document_freqs_.find(word);
-        return it != word_to_document_freqs_.end()/* && it->second.count(document_id)*/;
-    };
+            const auto it = word_to_document_freqs_.find(word);
+            return it != word_to_document_freqs_.end();
+        };
 
     if (any_of(execution::par,
         query.minus_words.begin(), query.minus_words.end(),
