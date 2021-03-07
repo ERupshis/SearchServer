@@ -108,7 +108,7 @@ template <typename ExecutionPolicy, typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const  ExecutionPolicy exec_policy, std::string_view raw_query, DocumentPredicate document_predicate) const { //NEED TO FIX
     Query query = ParseQuery(raw_query);
     std::vector<Document> matched_documents = FindAllDocuments(exec_policy, query, document_predicate);
-    sort(std::execution::par, matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
+    sort(exec_policy, matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
         if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
             return lhs.rating > rhs.rating;
         }

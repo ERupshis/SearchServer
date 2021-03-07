@@ -16,7 +16,6 @@ SearchServer::SearchServer(const string& stop_words_text)
 {
 }
 
-
 void SearchServer::AddDocument(int document_id, string_view document, DocumentStatus status, const vector<int>& ratings) { // S8 LESSON 9.3 NEW
     if ((document_id < 0) || (documents_.count(document_id) > 0)) {
         throw invalid_argument("document contains wrong id"s);
@@ -38,7 +37,7 @@ void SearchServer::AddDocument(int document_id, string_view document, DocumentSt
 }
 
 void SearchServer::RemoveDocument(int document_id) {
-    RemoveDocument(std::execution::seq, document_id); // S8 NEW  
+    RemoveDocument(execution::seq, document_id); // S8 NEW  
 }
 
 void SearchServer::RemoveDocument(const execution::sequenced_policy&, int document_id) { // S8 NEW
@@ -82,34 +81,33 @@ void SearchServer::RemoveDocument(const execution::parallel_policy&, int documen
 }
 
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentStatus status) const {
-    return FindTopDocuments(std::execution::seq, raw_query, [status](int document_id, DocumentStatus statusp, int rating) { return statusp == status; });
+    return FindTopDocuments(execution::seq, raw_query, [status](int document_id, DocumentStatus statusp, int rating) { return statusp == status; });
 }
 vector<Document> SearchServer::FindTopDocuments(string_view raw_query) const {
-    return FindTopDocuments(std::execution::seq, raw_query, DocumentStatus::ACTUAL);
+    return FindTopDocuments(execution::seq, raw_query, DocumentStatus::ACTUAL);
 }
-
 
 int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
 
-const std::map<std::string_view, double>& SearchServer::GetWordFrequencies(int document_id) const { // S5 NEW
+const map<string_view, double>& SearchServer::GetWordFrequencies(int document_id) const { // S5 NEW
     if (document_ids_.count(document_id) == 1) {
         return document_words_freqs_.at(document_id);
     }
-    static std::map<std::string_view, double> empty_map;
+    static map<string_view, double> empty_map;
     return empty_map;
 }
 
-std::set<int>::const_iterator SearchServer::begin() const { // S5 NEW
+set<int>::const_iterator SearchServer::begin() const { // S5 NEW
     return document_ids_.begin();
 }
-std::set<int>::const_iterator SearchServer::end() const { // S5 NEW
+set<int>::const_iterator SearchServer::end() const { // S5 NEW
     return document_ids_.end();
 }
 
 SearchServer::MatchDocumentResult SearchServer::MatchDocument(string_view raw_query, int document_id) const { ///S8 9.3 NEW
-    return MatchDocument(std::execution::seq, raw_query, document_id);
+    return MatchDocument(execution::seq, raw_query, document_id);
 }
 
 SearchServer::MatchDocumentResult SearchServer::MatchDocument(const execution::sequenced_policy&, string_view raw_query, int document_id) const { //S8 9.3 NEW
@@ -138,7 +136,7 @@ SearchServer::MatchDocumentResult SearchServer::MatchDocument(const execution::s
         matched_words.begin(),
         word_checker
     );
-    std::sort(matched_words.begin(), words_end);
+    sort(matched_words.begin(), words_end);
     words_end = unique(matched_words.begin(), words_end);
     matched_words.erase(words_end, matched_words.end());
 
@@ -170,7 +168,7 @@ SearchServer::MatchDocumentResult SearchServer::MatchDocument(const execution::p
         matched_words.begin(),
         word_checker
     );
-    std::sort(matched_words.begin(), words_end);
+    sort(matched_words.begin(), words_end);
     words_end = unique(matched_words.begin(), words_end);
     matched_words.erase(words_end, matched_words.end());
 
